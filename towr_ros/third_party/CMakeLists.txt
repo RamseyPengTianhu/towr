@@ -1,0 +1,5 @@
+# add_subdirectory(yaml-cpp)
+add_subdirectory(eigen)
+# add_subdirectory(qpOASES)
+add_subdirectory(glog)
+# add_subdirectory(rbdl)

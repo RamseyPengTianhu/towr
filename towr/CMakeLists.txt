@@ -61,9 +61,11 @@ add_library(${PROJECT_NAME} SHARED
   src/spline_holder.cc
   src/euler_converter.cc
   src/phase_durations_observer.cc
+
+  # src/IK_a1.cc
 )
 target_link_libraries(${PROJECT_NAME} 
-  PUBLIC 
+PUBLIC 
     ifopt::ifopt_core
 )
 target_include_directories(${PROJECT_NAME} 

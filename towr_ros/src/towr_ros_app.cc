@@ -29,6 +29,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <towr/initialization/gait_generator.h>
 #include <towr_ros/towr_ros_interface.h>
+#include "towr_ros/IK.h"
+
 
 
 namespace towr {
@@ -124,6 +126,9 @@ int main(int argc, char *argv[])
 {
   ros::init(argc, argv, "my_towr_ros_app");
   towr::TowrRosApp towr_app;
+  // towr::A1LegIKController IK_controller(0.04, 0.2, 0.2, 0.183, 0.047, 0.01675,
+  //                                        46, -46, 240, -60, -52.5, -154.5,
+  //                                        0.064713601, 0.000552929, 0.001367788, 0.000032426);
   ros::spin();
 
   return 1;
