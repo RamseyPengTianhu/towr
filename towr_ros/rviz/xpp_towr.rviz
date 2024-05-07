@@ -7,7 +7,7 @@ Panels:
         - /Grid1/Offset1
         - /CartesianVisualization1
         - /CartesianVisualization1/Namespaces1
-        - /ANYmal (proprietary)1
+        - /A1_Biped1
       Splitter Ratio: 0.4424239993095398
     Tree Height: 787
   - Class: rviz/Selection
@@ -148,7 +148,7 @@ Visualization Manager:
         Link Tree Style: Links in Alphabetic Order
       Name: A1
       Robot Description: /a1_rviz_urdf_robot_description
-      TF Prefix: "a1_des"
+      TF Prefix: a1_des
       Update Interval: 0
       Value: false
       Visual Enabled: true
@@ -168,7 +168,22 @@ Visualization Manager:
       Update Interval: 0
       Value: false
       Visual Enabled: true
-      
+    - Alpha: 0.5
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: false
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+      Name: A1_Biped
+      Robot Description: a1_biped_rviz_urdf_robot_description
+      TF Prefix: a1_biped_des
+      Update Interval: 0
+      Value: false
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -213,9 +228,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.28979799151420593
+      Pitch: 0.33979809284210205
       Target Frame: <Fixed Frame>
-      Yaw: 1.3389899730682373
+      Yaw: 1.7789936065673828
     Saved:
       - Angle: 3.140000104904175
         Class: rviz/TopDownOrtho

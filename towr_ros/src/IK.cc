@@ -40,35 +40,40 @@ namespace towr
     flag = false;
   }
 
-  const Eigen::Matrix<double, 6, 1> A1LegIKController::SolveIK(Eigen::Vector3d &current_cartesian_position,
+  const Eigen::Matrix<double, 6, 1> A1LegIKController::SolveIK(Eigen::Vector3d current_cartesian_position,
                                                                Eigen::Matrix<double, kJointLegNum, 1> previous_joint_angles,
-                                                               Eigen::Vector3d &current_cartesian_velocities, Eigen::Vector3d base_position, Eigen::Vector3d &base_velocity, int hip_id, double time_step_)
+                                                               Eigen::Vector3d current_cartesian_velocities, Eigen::Vector3d base_position, Eigen::Vector3d base_velocity, Eigen::Matrix3d Rot_matrix, int hip_id, int robot_type)
   {
 
-    joint_velocities_eigen = ComputeJointVelocities(previous_joint_angles, current_cartesian_velocities, jacobian, hip_id);
-
     cartesian_position = current_cartesian_position;
-    Eigen::Matrix3d R_base_to_hip;
-    joint_angles = Geomotory_and_InverseKinematics(cartesian_position, base_position, R_base_to_hip, hip_id);
+    // world to base ori transform
+    joint_angles = Geomotory_and_InverseKinematics(cartesian_position, base_position, Rot_matrix, hip_id, robot_type);
     // std::cout << "joint_velocities_eigen:\n"
     //           << joint_velocities_eigen << std::endl;
     std::cout << "Calculated_joint_angles:\n"
               << joint_angles << std::endl;
-    Eigen::Vector3d test_pos = ComputeJacobian_and_ForwardKinematics(joint_angles, jacobian, hip_id);
+    Eigen::Vector3d test_pos = ComputeJacobian_and_ForwardKinematics(joint_angles, jacobian, hip_id, robot_type);
+    joint_velocities = ComputeJointVelocities(previous_joint_angles, current_cartesian_velocities, jacobian, hip_id, robot_type);
+
     // test_pos = TransformHipFrameToWorldFrame(test_pos, base_position, hip_id);
 
     // test_pos = R_base_to_hip.transpose() * test_pos;
-    std::cout << "Actual Pos:\n"
+    std::cout << "Foot pos in world frame:\n"
               << cartesian_position << std::endl;
-    std::cout << "Test Pos:\n"
-              << test_pos << std::endl;
-    std::cout << "Pos error is:\n"
-              << (cartesian_position - test_pos).lpNorm<1>() << std::endl;
+    Eigen::Vector3d foot_pos = TransformWorldFrameToHipFrame(cartesian_position, base_position, Rot_matrix, hip_id, robot_type);
+    std::cout << "Foot pos in hip frame:\n"
+              << foot_pos << std::endl;
 
-    if ((cartesian_position - test_pos).lpNorm<1>() > 100 * kTiny)
+    std::cout
+        << "Test Pos:\n"
+        << test_pos << std::endl;
+    std::cout << "Pos error is:\n"
+              << (foot_pos - test_pos).lpNorm<1>() << std::endl;
+
+    if ((foot_pos - test_pos).lpNorm<1>() > 30 * kTiny)
     {
 
-      exit(1);
+      // exit(1);
 
       // return true;
     }
@@ -83,45 +88,30 @@ namespace towr
   }
 
   // Compute the Jacobian
-  Eigen::Vector3d A1LegIKController::ComputeJacobian_and_ForwardKinematics(Eigen::Matrix<double, kJointLegNum, 1> &joint_angles, Eigen::Matrix<double, kJointLegNum, kJointLegNum> &Jacobian_Matrix, int hip_id)
+  Eigen::Vector3d A1LegIKController::ComputeJacobian_and_ForwardKinematics(Eigen::Matrix<double, kJointLegNum, 1> joint_angles, Eigen::Matrix<double, kJointLegNum, kJointLegNum> &Jacobian_Matrix, int hip_id, int robot_type)
   {
 
     double l1 = hip_length_;
     double l2 = thigh_length_;
     double l3 = calf_length_;
 
+    // std::cout << "joint_angles:\n"
+    //           << joint_angles << std::endl;
+
     // Calssify the leg position in left or right
     int sideSign = (hip_id == 0 || hip_id == 2) ? 1 : -1;
 
     Eigen::Vector3d position;
-    double s1 = std::sin(joint_angles[0]);               // hip joint
-    double s2 = std::sin(joint_angles[1]);               // thigh joint
-    double s2_pi = std::sin(joint_angles[1] + M_PI / 2); // thigh joint
-    double pi_s2 = std::sin(M_PI / 2 - joint_angles[1]); // thigh joint
-    double mins_s2 = std::sin(-joint_angles[1]);         // thigh joint
+    double s1 = std::sin(joint_angles[0]); // hip joint
+    double s2 = std::sin(joint_angles[1]); // thigh joint
+    double s3 = std::sin(joint_angles[2]); // calf joint
 
-    double s3 = std::sin(joint_angles[2]);               // calf joint
-    double s3_pi = std::sin(joint_angles[2] + M_PI / 2); // thigh joint
-    double mins_s3 = std::sin(-joint_angles[2]);         // thigh joint
-
-    double c1 = std::cos(joint_angles[0]);               // hip joint
-    double c2 = std::cos(joint_angles[1]);               // thigh joint
-    double c2_pi = std::cos(joint_angles[1] + M_PI / 2); // thigh joint
-    double mins_c2 = std::cos(-joint_angles[1]);         // thigh joint
-    double c3 = std::cos(joint_angles[2]);               // calf joint
-    double c3_pi = std::cos(joint_angles[2] + M_PI_2);   // calf joint
-    double mins_c3 = std::cos(-joint_angles[2]);         // calf joint
+    double c1 = std::cos(joint_angles[0]); // hip joint
+    double c2 = std::cos(joint_angles[1]); // thigh joint
+    double c3 = std::cos(joint_angles[2]); // calf joint
 
     double c23 = c2 * c3 - s2 * s3;
     double s23 = s2 * c3 + c2 * s3;
-    double s2pi3 = s2_pi * c3 + c2_pi * s3;
-    double s2pi3pi = s2_pi * c3_pi + c2_pi * s3_pi;
-    double s23pi = s2 * c3_pi + c2 * s3_pi;
-    double s2pi_3 = s2_pi * mins_c3 + c2_pi * mins_s3;
-    double s_23pi = mins_s2 * c3_pi + mins_c2 * s3_pi;
-    double s_23 = mins_s2 * c3_pi + mins_c2 * s3;
-    double s_2_3 = mins_s2 * mins_c3 + mins_c2 * mins_s3;
-    double s2_3 = s2 * mins_c3 + c2 * mins_s3;
 
     // Store the Jacobian Matrix
     Jacobian_Matrix(0, 0) = 0;
@@ -135,6 +125,18 @@ namespace towr
     Jacobian_Matrix(1, 2) = -l3 * s23 * s1;
     Jacobian_Matrix(2, 2) = l3 * s23 * c1;
 
+    // if (robot_type == 5)
+    // {
+    //   position[2] = -l3 * s23 - l2 * s2;                                 // x-coordinate
+    //   position[1] = l1 * sideSign * c1 + l3 * (s1 * c23) + l2 * c2 * s1; // y-coordinate
+    //   position[0] = l1 * sideSign * s1 - l3 * (c1 * c23) - l2 * c1 * c2; // z-coordinate
+    // }
+    // else
+    // {
+    //   position[0] = -l3 * s23 - l2 * s2;                                 // x-coordinate
+    //   position[1] = l1 * sideSign * c1 + l3 * (s1 * c23) + l2 * c2 * s1; // y-coordinate
+    //   position[2] = l1 * sideSign * s1 - l3 * (c1 * c23) - l2 * c1 * c2; // z-coordinate
+    // }
     position[0] = -l3 * s23 - l2 * s2;                                 // x-coordinate
     position[1] = l1 * sideSign * c1 + l3 * (s1 * c23) + l2 * c2 * s1; // y-coordinate
     position[2] = l1 * sideSign * s1 - l3 * (c1 * c23) - l2 * c1 * c2; // z-coordinate
@@ -145,52 +147,137 @@ namespace towr
   }
 
   // Compute the Jacobian
-  Eigen::Matrix<double, 3, 1> A1LegIKController::Geomotory_and_InverseKinematics(Eigen::Vector3d &target_position, Eigen::Vector3d base_position, Eigen::Matrix3d &R_base_to_hip, int hip_id)
+  Eigen::Matrix<double, 3, 1> A1LegIKController::Geomotory_and_InverseKinematics(Eigen::Vector3d target_position, Eigen::Vector3d base_position, Eigen::Matrix3d Rot_matrix, int hip_id, int robot_type)
   {
     // Define leg parameters
     double l1 = hip_length_;
     double l2 = thigh_length_;
     double l3 = calf_length_;
     double q_Hip, q_Thigh, q_Calf; // Joint angles for hip, thigh, and calf joints
-    // std::cout << "Foot pos in world frame:\n"
-    // << target_position << std::endl;
-    // std::cout << "Base pos in world frame:\n"
-    // << base_position << std::endl;
-    target_position = TransformWorldFrameToHipFrame(target_position, base_position, hip_id);
+    Eigen::Vector3d foot_posi;
+    Eigen::Vector3d base_posi;
+    Eigen::Vector3d Trans_pos;
+
+    // if (robot_type == 5)
+    // {
+    //   foot_posi[0] = target_position[2];
+    //   foot_posi[2] = target_position[0];
+    //   base_posi[2] = base_position[0];
+    //   base_posi[0] = base_position[2];
+    //   Trans_pos = TransformWorldFrameToHipFrame(foot_posi, base_posi, Rot_matrix, hip_id);
+    // }
+    // else
+    // {
+    //   Trans_pos = TransformWorldFrameToHipFrame(target_position, base_position, Rot_matrix, hip_id);
+    // }
+    Trans_pos = TransformWorldFrameToHipFrame(target_position, base_position, Rot_matrix, hip_id, robot_type);
+
     // Extract target coordinates
-    double x = target_position[0];
-    double y = target_position[1];
-    double z = target_position[2];
+
+    double x = Trans_pos[0];
+    double y = Trans_pos[1];
+    double z = Trans_pos[2];
+
+    // std::cout << "x:\n"
+    //           << x << std::endl;
+    // std::cout << "y:\n"
+    //           << y << std::endl;
+    // std::cout << "z:\n"
+    //           << z << std::endl;
 
     int sideSign = (hip_id == 0 || hip_id == 2) ? 1 : -1;
 
-    double gamma_1, gamma_2;
+    // double gamma_1, gamma_2;
+    // double dyz = std::sqrt(y * y + z * z);
+    // double lyz = std::sqrt(dyz * dyz - l1 * l1);
+
+    // // // Classify the leg position in left or right
+
+    // gamma_1 = std::atan2(z, y);
+    // gamma_2 = std::atan2(lyz, l1);
+    // q_Hip = gamma_1 + sideSign * gamma_2;
+
+    // double lxz = std::sqrt(lyz * lyz + x * x);
+
+    // double n = (lxz * lxz - l3 * std::cos(q_Hip) * l3 * std::cos(q_Hip) - l2 * std::cos(q_Hip) * l2 * std::cos(q_Hip)) / (2 * l2 * std::cos(q_Hip) * l3 * std::cos(q_Hip));
+    // q_Calf = sideSign * ::acos(std::clamp(n, -1.0, 1.0));
+    // double m = (l3 * std::cos(q_Hip) * l3 * std::cos(q_Hip) - lxz * lxz - l2 * std::cos(q_Hip) * l2 * std::cos(q_Hip)) / (2 * l2 * std::cos(q_Hip) * lxz);
+
+    // double alpha_1, alpha_2;
+    // alpha_1 = std::atan2(lyz, x);
+    // alpha_2 = std::acos(std::clamp(m, -1.0, 1.0));
+    // q_Thigh = -sideSign * (M_PI / 2 - sideSign * (alpha_1 + alpha_2));
+
     double dyz = std::sqrt(y * y + z * z);
     double lyz = std::sqrt(dyz * dyz - l1 * l1);
 
-    // // Classify the leg position in left or right
-
-    gamma_1 = std::atan2(z, y);
-    gamma_2 = std::atan2(lyz, l1);
-    q_Hip = gamma_1 + sideSign * gamma_2;
-
+    double gamma_1 = std::atan2(z, y);
+    double gamma_2 = std::atan2(lyz, l1);
+    // double R_gamma = gamma_1 - gamma_2;
+    // double L_gamma = gamma_1 + gamma_2;
+    double gamma = gamma_1 + sideSign * gamma_2;
+    q_Hip = gamma;
     double lxz = std::sqrt(lyz * lyz + x * x);
 
-    double n = (lxz * lxz - l3 * std::cos(q_Hip) * l3 * std::cos(q_Hip) - l2 * std::cos(q_Hip) * l2 * std::cos(q_Hip)) / (2 * l2 * std::cos(q_Hip) * l3 * std::cos(q_Hip));
-    q_Calf = sideSign * ::acos(std::clamp(n, -1.0, 1.0));
-    double m = (l3 * std::cos(q_Hip) * l3 * std::cos(q_Hip) - lxz * lxz - l2 * std::cos(q_Hip) * l2 * std::cos(q_Hip)) / (2 * l2 * std::cos(q_Hip) * lxz);
-    // double n = (lxz * lxz - l3 * l3 - l2 * l2) / (2 * l2 * l3);
-    // q_Calf = -std::acos(n);
-    // double m = (l3 * l3 - lxz * lxz - l2 * l2) / (2 * l2 * lxz);
+    double n = (lxz * lxz - l3 * l3 - l2 * l2) / (2 * l2 * l3);
+    double beta = -std::acos(std::clamp(n, -1.0, 1.0));
+    q_Calf = beta;
+    double m = (l3 * l3 - lxz * lxz - l2 * l2) / (2 * l2 * lxz);
+    double alpha_1 = std::atan2(lxz, x);
+    double alpha_2 = -std::acos(std::clamp(m, -1.0, 1.0));
+    q_Thigh = -sideSign * (M_PI_2 - sideSign * (alpha_1 + alpha_2));
+    // std::cout << "q_Thigh:\n"
+    //           << q_Thigh << std::endl;
+    if (q_Thigh > M_PI_2)
+    {
+      q_Thigh = q_Thigh - M_PI;
+    }
+    else if (q_Thigh < -M_PI_2)
+    {
+      q_Thigh = q_Thigh + M_PI;
+    }
 
-    double alpha_1, alpha_2;
-    alpha_1 = std::atan2(lyz, x);
-    alpha_2 = std::acos(std::clamp(m, -1.0, 1.0));
-    q_Thigh = -sideSign * (M_PI / 2 - sideSign * (alpha_1 + alpha_2));
-    // q_Thigh = -(alpha_1 + alpha_2);
+    if (q_Hip > M_PI_2)
+    {
+      q_Hip = q_Hip - M_PI;
+    }
+    else if (q_Hip < -M_PI_2)
+    {
+      q_Hip = q_Hip + M_PI;
+    }
 
-    joint_angles << q_Hip, q_Thigh, q_Calf; // Return joint angles for hip, thigh, and calf joints
-    SingleLegAngleSaturation(joint_angles);
+    if (robot_type == 5)
+    {
+      q_Thigh += M_PI_2;
+    }
+
+    // double d = std::sqrt(std::pow(y, 2) + std::pow(y, 2));
+
+    // // Calculate l
+    // double l = std::sqrt(std::pow(d, 2) - std::pow(l1, 2));
+
+    // // Calculate n
+    // double n = (std::pow(l, 2) + std::pow(x, 2) - std::pow(l3, 2) - std::pow(l2, 2)) / (2 * l2);
+
+    // // Calculate s
+    // double s = std::sqrt(std::pow(l, 2) + std::pow(x, 2));
+
+    // // Calculate theta1
+    // double theta1 = std::atan(std::abs(y / z)) - std::atan(std::abs(l1 / l));
+
+    // // Calculate theta2
+    // double theta2 = -std::atan(x / l) + std::acos((l2 + n) / s);
+
+    // // Calculate theta3
+    // double theta3 = -std::acos(std::abs((std::pow(l, 2) + std::pow(x, 2) - std::pow(l3, 2) - std::pow(l2, 2)) / (2 * l2 * l3)));
+    // q_Hip = sideSign * theta1;
+    // q_Thigh = theta2;
+    // q_Calf = theta3;
+
+    joint_angles
+        << q_Hip,
+        q_Thigh, q_Calf; // Return joint angles for hip, thigh, and calf joints
+    // SingleLegAngleSaturation(joint_angles);
 
     return joint_angles;
   }
@@ -206,45 +293,72 @@ namespace towr
   }
 
   Eigen::Vector3d A1LegIKController::TransformWorldFrameToHipFrame(
-      Eigen::Vector3d &foot_position_in_world_frame, Eigen::Vector3d &base_position_in_world_frame, int hip_id)
+      Eigen::Vector3d foot_position_in_world_frame, Eigen::Vector3d base_position_in_world_frame, Eigen::Matrix3d Rot_matrix, int hip_id, int robot_type)
   {
-    // Each hip position offest respect to base
-    Eigen::Vector3d FR_Hip_Trans(leg_offset_x_, -leg_offset_y_, 0);
-    Eigen::Vector3d FL_Hip_Trans(leg_offset_x_, leg_offset_y_, 0);
-    Eigen::Vector3d RR_Hip_Trans(-leg_offset_x_, -leg_offset_y_, 0);
-    Eigen::Vector3d RL_Hip_Trans(-leg_offset_x_, leg_offset_y_, 0);
-    switch (hip_id)
+    Eigen::Vector3d hip_position_in_world_frame;
+    Eigen::Vector3d hip_offset;
+
+    // Determine hip offset based on hip_id
+    if (robot_type == 5)
     {
-    case 0:
-      // FL Hip Joint
-      hip_position_in_world_frame = base_position_in_world_frame + FL_Hip_Trans;
-      break;
-    case 1:
-      // FR Hip Joint
-      hip_position_in_world_frame = base_position_in_world_frame + FR_Hip_Trans;
+      switch (hip_id)
+      {
+      case 0: // FL Hip Joint
+        hip_offset = Eigen::Vector3d(0, leg_offset_y_, -leg_offset_x_);
 
-      break;
-    case 2:
-      // RL Hip Joint
-      hip_position_in_world_frame = base_position_in_world_frame + RL_Hip_Trans;
+        break;
+      case 1: // FR Hip Joint
+        hip_offset = Eigen::Vector3d(0, -leg_offset_y_, -leg_offset_x_);
 
-      break;
-    case 3:
-      // RR Hip Joint
-      hip_position_in_world_frame = base_position_in_world_frame + RR_Hip_Trans;
+        break;
+      case 2: // RL Hip Joint
+        hip_offset = Eigen::Vector3d(0, leg_offset_y_, leg_offset_x_);
 
-      break;
-    default:
-      break;
+        break;
+      case 3: // RR Hip Joint
+        hip_offset = Eigen::Vector3d(0, -leg_offset_y_, leg_offset_x_);
+
+        break;
+      default:
+        return Eigen::Vector3d::Zero();
+      }
+    }
+    else
+    {
+      switch (hip_id)
+      {
+      case 0: // FL Hip Joint
+        hip_offset = Eigen::Vector3d(leg_offset_x_, leg_offset_y_, 0);
+
+        break;
+      case 1: // FR Hip Joint
+        hip_offset = Eigen::Vector3d(leg_offset_x_, -leg_offset_y_, 0);
+
+        break;
+      case 2: // RL Hip Joint
+        hip_offset = Eigen::Vector3d(-leg_offset_x_, leg_offset_y_, 0);
+
+        break;
+      case 3: // RR Hip Joint
+        hip_offset = Eigen::Vector3d(-leg_offset_x_, -leg_offset_y_, 0);
+
+        break;
+      default:
+        // Invalid hip_id, return zero vector or handle error
+        return Eigen::Vector3d::Zero();
+      }
     }
 
+    // Calculate hip position in world frame
+    hip_position_in_world_frame = base_position_in_world_frame + hip_offset;
+
     // Transform foot position from world frame to hip frame
-    foot_position_in_hip_frame = foot_position_in_world_frame - hip_position_in_world_frame;
+    Eigen::Vector3d foot_position_in_hip_frame = Rot_matrix.transpose() * (foot_position_in_world_frame - hip_position_in_world_frame);
 
     return foot_position_in_hip_frame;
   }
   Eigen::Vector3d A1LegIKController::TransformHipFrameToWorldFrame(
-      Eigen::Vector3d &foot_position_in_hip_frame, Eigen::Vector3d &base_position_in_world_frame, int hip_id)
+      Eigen::Vector3d foot_position_in_hip_frame, Eigen::Vector3d base_position_in_world_frame, int hip_id)
   {
     // Determine the hip joint's position in the world frame based on hip_id
 
@@ -278,11 +392,11 @@ namespace towr
   }
 
   Eigen::VectorXd A1LegIKController::ComputeJointVelocities(Eigen::Matrix<double, kJointLegNum, 1> previous_joint_angles,
-                                                            Eigen::Vector3d &cartesian_velocities, Eigen::Matrix<double, kJointLegNum, kJointLegNum> jacobian, int hip_id)
+                                                            Eigen::Vector3d &cartesian_velocities, Eigen::Matrix<double, kJointLegNum, kJointLegNum> jacobian, int hip_id, int robot_type)
   {
     // Assuming a simple linear relationship for demonstration purposes.
     // You should replace this with the actual computation based on your system dynamics.
-    Eigen::Vector3d FK_Pos = ComputeJacobian_and_ForwardKinematics(joint_angles, jacobian, hip_id);
+    Eigen::Vector3d FK_Pos = ComputeJacobian_and_ForwardKinematics(joint_angles, jacobian, hip_id, robot_type);
     jacobian_pseudo_inverse = jacobian.completeOrthogonalDecomposition().pseudoInverse();
     return jacobian_pseudo_inverse * cartesian_velocities;
   }

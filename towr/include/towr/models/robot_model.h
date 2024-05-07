@@ -36,61 +36,65 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <towr/models/dynamic_model.h>
 #include <towr/models/kinematic_model.h>
 
-namespace towr {
+namespace towr
+{
 
-/**
- * @defgroup Robots
- * @brief The kinematic and dynamic model of the robot.
- *
- * These models contain all the robot specific quantities in this problem.
- *
- * ### Add your own robot
- * To add your own robot, you must create its KinematicModel and DynamicModel.
- * The kinematics simply define a workspace for each end-effector. The
- * Dynamic Model can be everything from a Linear Inverted Pendulum,
- * SingleRigidBodyDynamics (SRBD), Centroidal Dynamics to Full-Rigid-Body
- * Dynamics (RBD). This library provides an implementation for the
- * SingleRigidBodyDynamics in which only the combined mass and inertia must
- * be adapted, but other models can be used as well. For example robots
- * to use as a guideline, see \ref include/towr/models/examples.
- */
-
-/**
- * @brief Base class for robot specific kinematics and dynamics.
- *
- * @ingroup Robots
- */
-struct RobotModel {
   /**
-   * @brief Robots for which kinematic and dynamic models are implemented.
+   * @defgroup Robots
+   * @brief The kinematic and dynamic model of the robot.
    *
-   * See folder: \ref include/towr/models/examples for more information.
+   * These models contain all the robot specific quantities in this problem.
+   *
+   * ### Add your own robot
+   * To add your own robot, you must create its KinematicModel and DynamicModel.
+   * The kinematics simply define a workspace for each end-effector. The
+   * Dynamic Model can be everything from a Linear Inverted Pendulum,
+   * SingleRigidBodyDynamics (SRBD), Centroidal Dynamics to Full-Rigid-Body
+   * Dynamics (RBD). This library provides an implementation for the
+   * SingleRigidBodyDynamics in which only the combined mass and inertia must
+   * be adapted, but other models can be used as well. For example robots
+   * to use as a guideline, see \ref include/towr/models/examples.
+   */
+
+  /**
+   * @brief Base class for robot specific kinematics and dynamics.
+   *
    * @ingroup Robots
    */
-  enum Robot { Monoped, ///< one-legged hopper
-               Biped,   ///< two-legged
-               Hyq,     ///< four-legged robot from IIT
-               Anymal,  ///< four-legged robot from Anybotics
-               A1,
-               ROBOT_COUNT };
+  struct RobotModel
+  {
+    /**
+     * @brief Robots for which kinematic and dynamic models are implemented.
+     *
+     * See folder: \ref include/towr/models/examples for more information.
+     * @ingroup Robots
+     */
+    enum Robot
+    {
+      Monoped, ///< one-legged hopper
+      Biped,   ///< two-legged
+      Hyq,     ///< four-legged robot from IIT
+      Anymal,  ///< four-legged robot from Anybotics
+      A1,
+      A1_Biped,
+      ROBOT_COUNT
+    };
 
+    RobotModel() = default;
+    RobotModel(Robot robot);
 
-  RobotModel() = default;
-  RobotModel(Robot robot);
+    KinematicModel::Ptr kinematic_model_;
+    DynamicModel::Ptr dynamic_model_;
+  };
 
-  KinematicModel::Ptr kinematic_model_;
-  DynamicModel::Ptr   dynamic_model_;
-};
-
-
-const static std::map<RobotModel::Robot, std::string> robot_names =
-{
-  {RobotModel::Monoped, "Monoped"},
-  {RobotModel::Biped,   "Biped"},
-  {RobotModel::Hyq,     "Hyq"},
-  {RobotModel::Anymal,  "Anymal"},
-  {RobotModel::A1,  "A1"}
-};
+  const static std::map<RobotModel::Robot, std::string> robot_names =
+      {
+          {RobotModel::Monoped, "Monoped"},
+          {RobotModel::Biped, "Biped"},
+          {RobotModel::Hyq, "Hyq"},
+          {RobotModel::Anymal, "Anymal"},
+          {RobotModel::A1, "A1"},
+          {RobotModel::A1_Biped, "A1_Biped"}};
 
 } /* namespace towr */
 

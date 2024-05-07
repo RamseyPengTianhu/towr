@@ -119,10 +119,10 @@ namespace towr
     XppJoint Joint_trajectory;
 
     void UserCommandCallback(const TowrCommandMsg &msg);
-    XppVec GetTrajectory(XppJoint &Joint_trajectory) const;
+    XppVec GetTrajectory(XppJoint &Joint_trajectory, const TowrCommandMsg msg) const;
     virtual BaseState GetGoalState(const TowrCommandMsg &msg) const;
-    void PublishInitialState();
-    std::vector<XppVec> GetIntermediateSolutions(std::vector<XppJoint> &Joint_trajectories);
+    void PublishInitialState(const TowrCommandMsg msg);
+    std::vector<XppVec> GetIntermediateSolutions(std::vector<XppJoint> &Joint_trajectories, const TowrCommandMsg user_command_msg);
     xpp_msgs::RobotParameters BuildRobotParametersMsg(const RobotModel &model) const;
     void SaveOptimizationAsRosbag(const std::string &bag_name,
                                   const xpp_msgs::RobotParameters &robot_params,

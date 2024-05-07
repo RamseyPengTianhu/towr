@@ -104,6 +104,7 @@ namespace towr
   {
     // robot model
     formulation_.model_ = RobotModel(static_cast<RobotModel::Robot>(msg.robot));
+
     auto robot_params_msg = BuildRobotParametersMsg(formulation_.model_);
     robot_parameters_pub_.publish(robot_params_msg);
 
@@ -121,7 +122,7 @@ namespace towr
     SetIpoptParameters(msg);
 
     // visualization
-    PublishInitialState();
+    PublishInitialState(msg);
 
     // Defaults to /home/user/.ros/
     std::string bag_file = "towr_trajectory.bag";
@@ -155,7 +156,7 @@ namespace towr
   }
 
   void
-  TowrRosInterface::PublishInitialState()
+  TowrRosInterface::PublishInitialState(const TowrCommandMsg msg)
   {
     int n_ee = formulation_.initial_ee_W_.size();
     int n_joints_per_ee = 3;
@@ -167,6 +168,7 @@ namespace towr
     init_base_pos = xpp.base_.lin.p_;
     init_joint_angle_single_leg = Eigen::Vector3d(0, kPi / 4, -kPi / 2);
     init_joint_velocity_single_leg = Eigen::Vector3d::Zero();
+    int robot_type = msg.robot;
 
     for (int ee_towr = 0; ee_towr < n_ee; ++ee_towr)
     {
@@ -180,27 +182,35 @@ namespace towr
       xpp.ee_forces_.at(ee_xpp).setZero(); // zero for visualization
       xpp_joint.q_.at(ee_xpp) = init_joint_angle_single_leg;
       xpp_joint.qd_.at(ee_xpp) = init_joint_velocity_single_leg;
-      Eigen::Matrix3d R_base_to_hip;
-      Eigen::Vector3d test_angle = ik_controller->Geomotory_and_InverseKinematics(init_foot_pos, xpp.base_.lin.p_, R_base_to_hip, ee_xpp);
+      Eigen::Quaterniond oritentation = xpp.base_.ang.q;
+
+      oritentation.normalize();
+      // Convert the quaternion to a rotation matrix
+      Eigen::Matrix3d Rot_matrix = oritentation.toRotationMatrix();
+      // std::cout << "Rot_matrix:\n"
+      //           << Rot_matrix << std::endl;
+      // std::cout << "init_foot_pos:\n"
+      //           << init_foot_pos << std::endl;
+      // std::cout << "init_base_pos:\n"
+      //           << init_base_pos << std::endl;
+
+      Eigen::Vector3d test_angle = ik_controller->Geomotory_and_InverseKinematics(init_foot_pos, init_base_pos, Rot_matrix, ee_xpp, robot_type);
       std::cout << "test_angle:\n"
                 << test_angle << std::endl;
       std::cout << "init_joint_angle_single_leg:\n"
                 << init_joint_angle_single_leg << std::endl;
 
-      // if ((test_angle_1 - init_joint_angle_single_leg).lpNorm<1>() > 0.001)
-      // {
-      //   exit(1);
-      // }
-
-      Eigen::Vector3d test_pos = ik_controller->ComputeJacobian_and_ForwardKinematics(test_angle, Jacobian_Matrix, ee_xpp);
+      Eigen::Vector3d test_pos = ik_controller->ComputeJacobian_and_ForwardKinematics(test_angle, Jacobian_Matrix, ee_xpp, robot_type);
       std::cout << "Test_position in hip frame:\n"
-                << test_pos << std::endl;
-      test_pos = ik_controller->TransformHipFrameToWorldFrame(test_pos, init_base_pos, ee_xpp);
-      std::cout << "Test_position in world frame:\n"
                 << test_pos << std::endl;
       std::cout
           << "Current position:\n"
           << xpp.ee_motion_.at(ee_xpp).p_ << std::endl;
+      Eigen::Vector3d init_pos = xpp.ee_motion_.at(ee_xpp).p_;
+      test_pos = ik_controller->TransformWorldFrameToHipFrame(init_pos, init_base_pos, Rot_matrix, ee_xpp, robot_type);
+      std::cout
+          << "test_pos position:\n"
+          << test_pos << std::endl;
       // for (int i = 0; i < 2; i++)
       // {
       //   test_pos(i) = test_pos(i) - xpp.base_.lin.p_(i);
@@ -217,14 +227,14 @@ namespace towr
   }
 
   std::vector<TowrRosInterface::XppVec>
-  TowrRosInterface::GetIntermediateSolutions(std::vector<XppJoint> &Joint_trajectories)
+  TowrRosInterface::GetIntermediateSolutions(std::vector<XppJoint> &Joint_trajectories, const TowrCommandMsg user_command_msg)
   {
     std::vector<XppVec> trajectories;
 
     for (int iter = 0; iter < nlp_.GetIterationCount(); ++iter)
     {
       nlp_.SetOptVariables(iter);
-      trajectories.push_back(GetTrajectory(Joint_trajectory));
+      trajectories.push_back(GetTrajectory(Joint_trajectory, user_command_msg));
       Joint_trajectories.push_back(Joint_trajectory);
     }
 
@@ -232,7 +242,7 @@ namespace towr
   }
 
   TowrRosInterface::XppVec
-  TowrRosInterface::GetTrajectory(XppJoint &Joint_trajectory) const
+  TowrRosInterface::GetTrajectory(XppJoint &Joint_trajectory, const TowrCommandMsg msg) const
   {
     // f_traj = fopen("/home/tianhu/TO/src/towr/trajectory/traj.csv","wb");
     // if (!(f_traj)) std::cout << "create traj file failed!<n" ;
@@ -246,6 +256,34 @@ namespace towr
     Eigen::Matrix<double, 6, 1> Joint_info_single;
     Eigen::Matrix<double, 3, 1> Joint_pos;
     Eigen::Matrix<double, 3, 1> Joint_vel;
+
+    int robot_type = msg.robot;
+
+    switch (robot_type)
+    {
+    case 0: // FL Hip Joint
+      std::cout << "Monoped Robot:\n"
+                << std::endl;
+      break;
+    case 1: // FR Hip Joint
+      std::cout << "Biped Robot:\n"
+                << std::endl;
+      break;
+    case 2: // RL Hip Joint
+      std::cout << "HYQ Robot:\n"
+                << std::endl;
+    case 3: // RL Hip Joint
+      std::cout << "Anymal Robot:\n"
+                << std::endl;
+    case 4: // RR Hip Joint
+      std::cout << "A1 Robot:\n"
+                << std::endl;
+      break;
+    case 5: // RR Hip Joint
+      std::cout << "A1_Biped Robot:\n"
+                << std::endl;
+      break;
+    }
 
     EulerConverter base_angular(solution.base_angular_);
     int n_ee = solution.ee_motion_.size();
@@ -273,6 +311,10 @@ namespace towr
       state.base_.ang.wd = base_angular.GetAngularAccelerationInWorld(t);
       Eigen::Vector3d base_position = state.base_.lin.p_;
       Eigen::Vector3d base_velocity = state.base_.lin.v_;
+      Eigen::Quaterniond oritentation = state.base_.ang.q;
+      // oritentation.normalize();
+      // Convert the quaternion to a rotation matrix
+      Eigen::Matrix3d Rot_matrix = oritentation.toRotationMatrix();
 
       for (int ee_towr = 0; ee_towr < n_ee; ++ee_towr)
       {
@@ -286,13 +328,10 @@ namespace towr
         Eigen::Vector3d foot_position = state.ee_motion_.at(ee_xpp).p_; // Extract pos component
         Eigen::Vector3d foot_velocity = state.ee_motion_.at(ee_xpp).v_; // Extract pos component
 
-        Joint_info_single = ik_controller->SolveIK(foot_position, Joint_state.q_.at(ee_xpp), foot_velocity, base_position, base_velocity, ee_towr, visualization_dt_);
+        Joint_info_single = ik_controller->SolveIK(foot_position, Joint_state.q_.at(ee_xpp), foot_velocity, base_position, base_velocity, Rot_matrix, ee_towr, robot_type);
 
         Joint_pos = Joint_info_single.block(0, 0, 3, 1);
         Joint_vel = Joint_info_single.block(3, 0, 3, 1);
-
-        // std::cout << "!!!!!!!!!Current Joint_angle:\n"<<current_joint_angles<<std::endl;
-        // std::cout << "!!!!!!!!!ee_motion_as_vector:\n"<<foot_pos<<std::endl;
 
         Joint_state.q_.at(ee_xpp) << Joint_pos(0), Joint_pos(1), Joint_pos(2);
         Joint_state.qd_.at(ee_xpp) << Joint_vel(0), Joint_vel(1), Joint_vel(2);
@@ -308,7 +347,6 @@ namespace towr
       Joint_trajectory.push_back(Joint_state);
       t += visualization_dt_;
     }
-    // std::cout << "closed traj file\n";
 
     return trajectory;
   }
@@ -346,6 +384,7 @@ namespace towr
 
     // save the a-priori fixed optimization variables
     bag.write(xpp_msgs::robot_parameters, t0, robot_params);
+
     bag.write(towr_msgs::user_command + "_saved", t0, user_command_msg);
 
     XppJoint Joint_trajectory;
@@ -353,7 +392,7 @@ namespace towr
     // save the trajectory of each iteration
     if (include_iterations)
     {
-      auto trajectories = GetIntermediateSolutions(Joint_trajectories);
+      auto trajectories = GetIntermediateSolutions(Joint_trajectories, user_command_msg);
       int n_iterations = trajectories.size();
       for (int i = 0; i < n_iterations; ++i)
         SaveTrajectoryInRosbag(bag, trajectories.at(i), Joint_trajectories.at(i), towr_msgs::nlp_iterations_name + std::to_string(i));
@@ -365,7 +404,7 @@ namespace towr
     }
 
     // save the final trajectory
-    auto final_trajectory = GetTrajectory(Joint_trajectory);
+    auto final_trajectory = GetTrajectory(Joint_trajectory, user_command_msg);
 
     SaveTrajectoryInRosbag(bag, final_trajectory, Joint_trajectory, xpp_msgs::robot_state_desired);
 

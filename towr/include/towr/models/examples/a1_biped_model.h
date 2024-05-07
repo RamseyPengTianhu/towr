@@ -27,8 +27,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
-#ifndef TOWR_TOWR_ROS_INCLUDE_TOWR_ROS_A1_MODEL_H_
-#define TOWR_TOWR_ROS_INCLUDE_TOWR_ROS_A1_MODEL_H_
+#ifndef TOWR_TOWR_ROS_INCLUDE_TOWR_ROS_A1_BIPED_MODEL_H_
+#define TOWR_TOWR_ROS_INCLUDE_TOWR_ROS_A1_BIPED_MODEL_H_
 
 #include <towr/models/kinematic_model.h>
 #include <towr/models/single_rigid_body_dynamics.h>
@@ -38,39 +38,36 @@ namespace towr
 {
 
   /**
-   * @brief The Kinematics of the quadruped robot A1.
+   * @brief The Kinematics of a tow-legged robot built from HyQ legs.
    */
-  class A1KinematicModel : public KinematicModel
+  class A1BipedKinematicModel : public KinematicModel
   {
   public:
-    A1KinematicModel() : KinematicModel(4)
+    A1BipedKinematicModel() : KinematicModel(2)
     {
-      const double x_nominal_b = 0.1805;
+      const double z_nominal_b = -0.2828 - 0.1805;
       const double y_nominal_b = 0.135;
-      const double z_nominal_b = -0.2828;
-      // const double z_nominal_b = -0.4;
+      const double x_nominal_b = 0.1805;
 
-      nominal_stance_.at(LF) << x_nominal_b, y_nominal_b, z_nominal_b;
-      nominal_stance_.at(RF) << x_nominal_b, -y_nominal_b, z_nominal_b;
-      nominal_stance_.at(LH) << -x_nominal_b, y_nominal_b, z_nominal_b;
-      nominal_stance_.at(RH) << -x_nominal_b, -y_nominal_b, z_nominal_b;
+      nominal_stance_.at(L) << 0, y_nominal_b, z_nominal_b;
+      nominal_stance_.at(R) << -0, -y_nominal_b, z_nominal_b;
 
       max_dev_from_nominal_ << 0.1, 0.1, 0.1;
     }
   };
 
   /**
-   * @brief The Dynamics of the quadruped robot A1.
+   * @brief The Dynamics of a tow-legged robot built from HyQ legs.
    */
-  class A1DynamicModel : public SingleRigidBodyDynamics
+  class A1BipedDynamicModel : public SingleRigidBodyDynamics
   {
   public:
-    A1DynamicModel()
+    A1BipedDynamicModel()
         : SingleRigidBodyDynamics(6.055,
                                   0.01683993, 0.056579028, 0.064713601, 8.3902e-05, 0.000597679, 2.5134e-05,
-                                  4) {}
+                                  2) {}
   };
 
-} // namespace towr
+} /* namespace towr */
 
-#endif /* TOWR_TOWR_ROS_INCLUDE_TOWR_ROS_A1_MODEL_H_ */
+#endif /* TOWR_TOWR_ROS_INCLUDE_TOWR_ROS_BIPED_MODEL_H_ */
