@@ -4,7 +4,7 @@
 #include <cmath>
 #include <array>
 #include <Eigen/Dense>
-#include <xpp_vis/inverse_kinematics.h>
+#include "/home/tianhu/TO/src/xpp/xpp_vis/include/xpp_vis/inverse_kinematics.h"
 #include <iostream>
 // #include <towr_ros/towr_ros_interface.h>
 

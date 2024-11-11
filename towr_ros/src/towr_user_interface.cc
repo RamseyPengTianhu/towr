@@ -142,9 +142,9 @@ namespace towr
     wmove(stdscr, GOAL_POS, X_KEY);
     printw("arrows");
     wmove(stdscr, GOAL_POS, X_DESCRIPTION);
-    printw("Goal x-y");
+    printw("Goal x-y-z");
     wmove(stdscr, GOAL_POS, X_VALUE);
-    PrintVector2D(goal_geom_.lin.p_.topRows(2));
+    PrintVector(goal_geom_.lin.p_);
     printw(" [m]");
 
     wmove(stdscr, GOAL_ORI, X_KEY);
@@ -218,10 +218,10 @@ namespace towr
     case KEY_UP:
       goal_geom_.lin.p_.y() -= d_lin;
       break;
-    case KEY_PPAGE:
+    case '3':
       goal_geom_.lin.p_.z() += 0.5 * d_lin;
       break;
-    case KEY_NPAGE:
+    case '7':
       goal_geom_.lin.p_.z() -= 0.5 * d_lin;
       break;
 

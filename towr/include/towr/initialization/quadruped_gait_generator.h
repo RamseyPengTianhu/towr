@@ -32,64 +32,65 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "gait_generator.h"
 
-namespace towr {
+namespace towr
+{
 
-/**
- * @brief Produces the contact sequence for a variety of four-legged gaits.
- *
- * @sa GaitGenerator for more documentation
- */
-class QuadrupedGaitGenerator : public GaitGenerator {
-public:
-  QuadrupedGaitGenerator ();
-  virtual ~QuadrupedGaitGenerator () = default;
+  /**
+   * @brief Produces the contact sequence for a variety of four-legged gaits.
+   *
+   * @sa GaitGenerator for more documentation
+   */
+  class QuadrupedGaitGenerator : public GaitGenerator
+  {
+  public:
+    QuadrupedGaitGenerator();
+    virtual ~QuadrupedGaitGenerator() = default;
 
-private:
-  GaitInfo GetGait(Gaits gait) const override;
+  private:
+    GaitInfo GetGait(Gaits gait) const override;
 
-  GaitInfo GetStrideStand() const;
-  GaitInfo GetStrideFlight() const;
-  GaitInfo GetStrideWalk() const;
-  GaitInfo GetStrideWalkOverlap() const;
-  GaitInfo GetStrideTrot() const;
-  GaitInfo GetStrideTrotFly() const;
-  GaitInfo GetStrideTrotFlyEnd () const;
-  GaitInfo GetStridePace() const;
-  GaitInfo GetStridePaceEnd() const;
-  GaitInfo GetStrideBound() const;
-  GaitInfo GetStrideBoundEnd () const;
-  GaitInfo GetStrideGallop() const;
-  GaitInfo GetStridePronk() const;
-  GaitInfo GetStrideLimp() const;
+    GaitInfo GetStrideStand() const;
+    GaitInfo GetStrideFlight() const;
+    GaitInfo GetStrideWalk() const;
+    GaitInfo GetStrideWalkOverlap() const;
+    GaitInfo GetStrideTrot() const;
+    GaitInfo GetStrideTrotFly() const;
+    GaitInfo GetStrideTrotFlyEnd() const;
+    GaitInfo GetStridePace() const;
+    GaitInfo GetStridePaceEnd() const;
+    GaitInfo GetStrideBound() const;
+    GaitInfo GetStrideBoundEnd() const;
+    GaitInfo GetStrideGallop() const;
+    GaitInfo GetStridePronk() const;
+    GaitInfo GetStrideLimp() const;
 
-  void SetCombo(Combos combo) override;
+    void SetCombo(Combos combo) override;
 
-
-  // naming convention:, where the circle is is contact, front is right ->.
-  // so RF and LH in contact is (Pb):  o .
-  //                                   . o
-  // flight-phase
-  ContactState II_;
-  // 1 swingleg
-  ContactState PI_;
-  ContactState bI_;
-  ContactState IP_;
-  ContactState Ib_;
-  // 2 swinglegs
-  ContactState Pb_;
-  ContactState bP_;
-  ContactState BI_;
-  ContactState IB_;
-  ContactState PP_;
-  ContactState bb_;
-  // 3 swinglegs
-  ContactState Bb_;
-  ContactState BP_;
-  ContactState bB_;
-  ContactState PB_;
-  // stance-phase
-  ContactState BB_;
-};
+    // naming convention:, where the circle is is contact, front is right ->.
+    // so RF and LH in contact is (Pb):  o .
+    //                                   . o
+    // flight-phase
+    ContactState II_;
+    // 1 swingleg
+    ContactState PI_;
+    ContactState bI_;
+    ContactState IP_;
+    ContactState Ib_;
+    // 2 swinglegs
+    ContactState Pb_;
+    ContactState bP_;
+    ContactState BI_;
+    ContactState IB_;
+    ContactState PP_;
+    ContactState bb_;
+    // 3 swinglegs
+    ContactState Bb_;
+    ContactState BP_;
+    ContactState bB_;
+    ContactState PB_;
+    // stance-phase
+    ContactState BB_;
+  };
 
 } /* namespace towr */
 

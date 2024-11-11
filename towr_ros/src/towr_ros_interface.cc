@@ -187,13 +187,6 @@ namespace towr
       oritentation.normalize();
       // Convert the quaternion to a rotation matrix
       Eigen::Matrix3d Rot_matrix = oritentation.toRotationMatrix();
-      // std::cout << "Rot_matrix:\n"
-      //           << Rot_matrix << std::endl;
-      // std::cout << "init_foot_pos:\n"
-      //           << init_foot_pos << std::endl;
-      // std::cout << "init_base_pos:\n"
-      //           << init_base_pos << std::endl;
-
       Eigen::Vector3d test_angle = ik_controller->Geomotory_and_InverseKinematics(init_foot_pos, init_base_pos, Rot_matrix, ee_xpp, robot_type);
       std::cout << "test_angle:\n"
                 << test_angle << std::endl;
@@ -203,9 +196,6 @@ namespace towr
       Eigen::Vector3d test_pos = ik_controller->ComputeJacobian_and_ForwardKinematics(test_angle, Jacobian_Matrix, ee_xpp, robot_type);
       std::cout << "Test_position in hip frame:\n"
                 << test_pos << std::endl;
-      std::cout
-          << "Current position:\n"
-          << xpp.ee_motion_.at(ee_xpp).p_ << std::endl;
       Eigen::Vector3d init_pos = xpp.ee_motion_.at(ee_xpp).p_;
       test_pos = ik_controller->TransformWorldFrameToHipFrame(init_pos, init_base_pos, Rot_matrix, ee_xpp, robot_type);
       std::cout
